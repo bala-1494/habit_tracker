@@ -9,9 +9,18 @@ export interface Habit {
 /** Map of `${habitId}|${YYYY-MM-DD}` -> true when the habit was done that day. */
 export type LogMap = Record<string, boolean>
 
+export interface Task {
+  id: string
+  /** YYYY-MM-DD the task belongs to */
+  date: string
+  title: string
+  done: boolean
+}
+
 export interface AppState {
   habits: Habit[]
   logs: LogMap
+  tasks: Task[]
 }
 
 export type ViewMode = 'daily' | 'weekly' | 'monthly' | 'lifetime'

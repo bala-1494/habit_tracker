@@ -215,6 +215,50 @@ input, select, textarea { font-family: inherit; }
 .lifelist__stat { font-size: 12px; color: var(--muted); }
 .lifelist__stat b { color: var(--text); font-size: 14px; }
 
+/* ---------- Tasks: weekly board ---------- */
+.monthnav__label--wide { min-width: 220px; }
+
+.overview { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+.overview__ring { display: flex; align-items: center; gap: 18px; }
+
+.bars { flex: 1; min-width: 260px; display: flex; align-items: flex-end; gap: 10px; height: 110px; }
+.bars__col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; }
+.bars__track { flex: 1; width: 100%; max-width: 46px; display: flex; align-items: flex-end; }
+.bars__fill { width: 100%; border-radius: 8px 8px 4px 4px; transition: height 0.3s; min-height: 4px; }
+.bars__label { font-size: 11px; color: var(--muted); }
+
+.board { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 6px; }
+.daycard {
+  flex: 0 0 220px; width: 220px; background: #0e1a30; border: 1px solid var(--line);
+  border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 12px;
+}
+.daycard--today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.daycard__head { text-align: center; }
+.daycard__dow { display: block; font-weight: 700; font-size: 15px; }
+.daycard__date { display: block; font-size: 11px; color: var(--muted); }
+.daycard__ring { display: flex; justify-content: center; }
+
+.daycard__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; min-height: 40px; }
+.taskrow { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.taskrow__check {
+  flex: 0 0 auto; width: 18px; height: 18px; border-radius: 5px; border: 2px solid var(--line);
+  background: transparent; color: #04121a; font-weight: 800; font-size: 11px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.taskrow--done .taskrow__check { background: var(--accent); border-color: var(--accent); }
+.taskrow__title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.taskrow--done .taskrow__title { color: var(--muted); text-decoration: line-through; }
+.taskrow__del { border: 0; background: transparent; color: #4c5f80; font-size: 12px; opacity: 0; transition: opacity 0.12s; }
+.taskrow:hover .taskrow__del { opacity: 1; }
+.taskrow__del:hover { color: #fb7185; }
+
+.daycard__add input {
+  width: 100%; background: #0b1424; border: 1px solid var(--line); border-radius: 8px;
+  color: var(--text); padding: 8px 10px; font-size: 13px;
+}
+.daycard__add input::placeholder { color: #4c5f80; }
+.daycard__foot { font-size: 11px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 8px; }
+
 /* ---------- Empty / settings ---------- */
 .empty { font-size: 16px; margin: 0 0 6px; }
 .empty--muted { color: var(--muted); font-size: 13px; }

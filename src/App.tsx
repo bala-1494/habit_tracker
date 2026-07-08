@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { AppState, Habit, Page, ViewMode } from './lib/types'
-import { loadState, saveState, exportState, importState } from './lib/storage'
-import { MONTH_NAMES, addMonths, logKey } from './lib/date'
+import type { AppState, Habit, Page, Task, ViewMode } from './lib/types'
+import { loadState, saveState, exportState, importState, makeId } from './lib/storage'
+import { MONTH_NAMES, addMonths, addDays, dateKey, logKey } from './lib/date'
 import { dailyCompletion, monthOverall } from './lib/stats'
 import Sidebar from './components/Sidebar'
 import MonthlyGrid from './components/MonthlyGrid'
@@ -10,6 +10,7 @@ import Analysis from './components/Analysis'
 import Ring from './components/Ring'
 import Toast from './components/Toast'
 import HabitManager from './components/HabitManager'
+import WeeklyBoard from './components/WeeklyBoard'
 import { DailyView, WeeklyView, LifetimeView } from './components/AltViews'
 
 const VIEWS: ViewMode[] = ['daily', 'weekly', 'monthly', 'lifetime']
@@ -24,6 +25,7 @@ export default function App() {
   const today = useMemo(() => new Date(), [])
   const [cursor, setCursor] = useState<[number, number]>(() => [today.getFullYear(), today.getMonth()])
   const [year, month] = cursor
+  const [weekAnchor, setWeekAnchor] = useState<Date>(() => today)
 
   const toastTimer = useRef<number | undefined>(undefined)
 
@@ -51,6 +53,25 @@ export default function App() {
 
   function setHabits(habits: Habit[]) {
     setState((prev) => ({ ...prev, habits }))
+  }
+
+  function addTask(date: Date, title: string) {
+    const task: Task = { id: makeId(), date: dateKey(date), title, done: false }
+    setState((prev) => ({ ...prev, tasks: [...prev.tasks, task] }))
+  }
+
+  function toggleTask(taskId: string) {
+    // Decide the toast from current state — the updater below runs after this line.
+    const current = state.tasks.find((t) => t.id === taskId)
+    if (current && !current.done) flash('✓ Completed!')
+    setState((prev) => ({
+      ...prev,
+      tasks: prev.tasks.map((t) => (t.id === taskId ? { ...t, done: !t.done } : t)),
+    }))
+  }
+
+  function deleteTask(taskId: string) {
+    setState((prev) => ({ ...prev, tasks: prev.tasks.filter((t) => t.id !== taskId) }))
   }
 
   const overall = monthOverall(state.habits, state.logs, year, month)
@@ -82,7 +103,18 @@ export default function App() {
           <StatsPage state={state} year={year} month={month} overall={overall} daily={daily.map((d) => d.ratio)} />
         )}
 
-        {page === 'tasks' && <TasksPage />}
+        {page === 'tasks' && (
+          <TasksPage
+            state={state}
+            today={today}
+            weekAnchor={weekAnchor}
+            onPrevWeek={() => setWeekAnchor((a) => addDays(a, -7))}
+            onNextWeek={() => setWeekAnchor((a) => addDays(a, 7))}
+            onAdd={addTask}
+            onToggle={toggleTask}
+            onDelete={deleteTask}
+          />
+        )}
 
         {page === 'settings' && (
           <SettingsPage state={state} onImport={setState} onManage={() => setShowManager(true)} />
@@ -192,17 +224,34 @@ function StatsPage({ state, year, month, overall, daily }: {
   )
 }
 
-function TasksPage() {
+function TasksPage({ state, today, weekAnchor, onPrevWeek, onNextWeek, onAdd, onToggle, onDelete }: {
+  state: AppState
+  today: Date
+  weekAnchor: Date
+  onPrevWeek: () => void
+  onNextWeek: () => void
+  onAdd: (date: Date, title: string) => void
+  onToggle: (taskId: string) => void
+  onDelete: (taskId: string) => void
+}) {
   return (
     <>
       <header className="topbar">
-        <h1 className="topbar__title">Tasks</h1>
-        <p className="topbar__sub">WEEKLY VIEW</p>
+        <div>
+          <h1 className="topbar__title">▦ Task Tracker</h1>
+          <p className="topbar__sub">WEEKLY VIEW</p>
+        </div>
       </header>
-      <section className="panel panel--empty">
-        <p className="empty">📋 The weekly Task Tracker is coming next.</p>
-        <p className="empty empty--muted">Day columns, per-day progress rings, and a mindset tracker will live here.</p>
-      </section>
+      <WeeklyBoard
+        tasks={state.tasks}
+        anchor={weekAnchor}
+        today={today}
+        onPrevWeek={onPrevWeek}
+        onNextWeek={onNextWeek}
+        onAdd={onAdd}
+        onToggle={onToggle}
+        onDelete={onDelete}
+      />
     </>
   )
 }

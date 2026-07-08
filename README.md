@@ -20,8 +20,18 @@ browser (`localStorage`) — no account, no server, no sharing.
 | **Stats page** — combined overall ring + chart + analysis | Stats |
 | **Settings** — export / import a JSON backup | Settings |
 
-> The **Tasks** module (weekly board, per-day rings, mindset tracker) is stubbed and
-> planned next.
+## Flows implemented (Task module)
+
+| Flow | Where |
+| --- | --- |
+| **Weekly board** — Sun→Sat day columns, each a card of that day's tasks | Tasks |
+| **Add / check / delete tasks** — inline "Add task…" input; checking strikes it through | any day card |
+| **Per-day progress ring** — completion % + "Completed X/Y" footer per day | each card |
+| **Week navigation** — ← / → across weeks | Tasks |
+| **Overall weekly progress** — donut (X/Y completed) + per-day completion bars | Tasks |
+
+> A **mindset tracker** (daily Energy / Focus / Motivation ratings shown as a
+> three-line trend) is planned as an optional add-on to the Tasks page.
 
 ## Run it
 

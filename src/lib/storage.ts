@@ -23,13 +23,16 @@ export function loadState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
-      const parsed = JSON.parse(raw) as AppState
-      if (Array.isArray(parsed.habits) && parsed.logs) return parsed
+      const parsed = JSON.parse(raw) as Partial<AppState>
+      if (Array.isArray(parsed.habits) && parsed.logs) {
+        // `tasks` was added in a later version — default it for older saves.
+        return { habits: parsed.habits, logs: parsed.logs, tasks: parsed.tasks ?? [] }
+      }
     }
   } catch {
     // Corrupt or unavailable storage — fall through to defaults.
   }
-  return { habits: DEFAULT_HABITS, logs: {} }
+  return { habits: DEFAULT_HABITS, logs: {}, tasks: [] }
 }
 
 export function saveState(state: AppState): void {
@@ -46,8 +49,10 @@ export function exportState(state: AppState): string {
 
 export function importState(json: string): AppState | null {
   try {
-    const parsed = JSON.parse(json) as AppState
-    if (Array.isArray(parsed.habits) && parsed.logs) return parsed
+    const parsed = JSON.parse(json) as Partial<AppState>
+    if (Array.isArray(parsed.habits) && parsed.logs) {
+      return { habits: parsed.habits, logs: parsed.logs, tasks: parsed.tasks ?? [] }
+    }
   } catch {
     // invalid JSON
   }

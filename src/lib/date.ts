@@ -55,3 +55,28 @@ export function addMonths(year: number, month: number, delta: number): [number, 
   const d = new Date(year, month + delta, 1)
   return [d.getFullYear(), d.getMonth()]
 }
+
+/** The seven days of the week containing `anchor`, Sunday-anchored. */
+export function weekOf(anchor: Date): Date[] {
+  const start = new Date(anchor.getFullYear(), anchor.getMonth(), anchor.getDate() - anchor.getDay())
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(start)
+    d.setDate(start.getDate() + i)
+    return d
+  })
+}
+
+export function addDays(d: Date, delta: number): Date {
+  const next = new Date(d)
+  next.setDate(d.getDate() + delta)
+  return next
+}
+
+export const DOW_FULL = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+/** Compact DD.MM.YYYY label used on the day cards. */
+export function shortDate(d: Date): string {
+  const day = String(d.getDate()).padStart(2, '0')
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  return `${day}.${m}.${d.getFullYear()}`
+}

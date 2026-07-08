@@ -1,18 +1,7 @@
 import type { Habit, LogMap } from '../lib/types'
-import { DOW_SHORT, dateKey } from '../lib/date'
+import { DOW_SHORT, dateKey, weekOf } from '../lib/date'
 import { isDone, currentStreak, bestStreak, lifetimeTotals } from '../lib/stats'
 import Ring from './Ring'
-
-/** Days of the week containing `today`, Sunday-anchored. */
-function weekOf(today: Date): Date[] {
-  const start = new Date(today)
-  start.setDate(today.getDate() - today.getDay())
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(start)
-    d.setDate(start.getDate() + i)
-    return d
-  })
-}
 
 interface ViewProps {
   habits: Habit[]
