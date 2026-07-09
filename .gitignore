@@ -6,3 +6,6 @@ dist-ssr
 .vite
 
 tsconfig.tsbuildinfo
+
+# SQLite database + WAL side files (server-generated user data)
+server/data/

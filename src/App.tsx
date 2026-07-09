@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AppState, Habit, Page, Task, ViewMode } from './lib/types'
-import { loadState, saveState, exportState, importState, makeId } from './lib/storage'
+import {
+  loadLocalState,
+  saveLocalState,
+  fetchRemoteState,
+  pushRemoteState,
+  exportState,
+  importState,
+  makeId,
+} from './lib/storage'
 import { MONTH_NAMES, addMonths, addDays, dateKey, logKey } from './lib/date'
 import { dailyCompletion, monthOverall } from './lib/stats'
 import Sidebar from './components/Sidebar'
@@ -15,12 +23,15 @@ import { DailyView, WeeklyView, LifetimeView } from './components/AltViews'
 
 const VIEWS: ViewMode[] = ['daily', 'weekly', 'monthly', 'lifetime']
 
+export type SyncStatus = 'connecting' | 'online' | 'offline'
+
 export default function App() {
-  const [state, setState] = useState<AppState>(() => loadState())
+  const [state, setState] = useState<AppState>(() => loadLocalState())
   const [page, setPage] = useState<Page>('habits')
   const [view, setView] = useState<ViewMode>('monthly')
   const [toast, setToast] = useState<string | null>(null)
   const [showManager, setShowManager] = useState(false)
+  const [sync, setSync] = useState<SyncStatus>('connecting')
 
   const today = useMemo(() => new Date(), [])
   const [cursor, setCursor] = useState<[number, number]>(() => [today.getFullYear(), today.getMonth()])
@@ -28,9 +39,47 @@ export default function App() {
   const [weekAnchor, setWeekAnchor] = useState<Date>(() => today)
 
   const toastTimer = useRef<number | undefined>(undefined)
+  // Skip re-uploading state we just pulled from the server.
+  const skipNextPush = useRef(true)
+  const pushTimer = useRef<number | undefined>(undefined)
 
+  // On load, adopt the server's copy so the same data appears on every device.
   useEffect(() => {
-    saveState(state)
+    let cancelled = false
+    fetchRemoteState().then((remote) => {
+      if (cancelled) return
+      if (!remote) {
+        // Server unreachable — keep working from the local cache.
+        setSync('offline')
+        skipNextPush.current = false
+        return
+      }
+      if (remote.habits.length === 0) {
+        // Fresh/empty server — seed it from whatever we have locally.
+        skipNextPush.current = false
+        pushRemoteState(loadLocalState()).then((ok) => setSync(ok ? 'online' : 'offline'))
+      } else {
+        skipNextPush.current = true
+        setState(remote)
+        setSync('online')
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Persist every change: instantly to localStorage, debounced to the server.
+  useEffect(() => {
+    saveLocalState(state)
+    if (skipNextPush.current) {
+      skipNextPush.current = false
+      return
+    }
+    window.clearTimeout(pushTimer.current)
+    pushTimer.current = window.setTimeout(() => {
+      pushRemoteState(state).then((ok) => setSync(ok ? 'online' : 'offline'))
+    }, 600)
   }, [state])
 
   function flash(msg: string) {
@@ -79,7 +128,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <Sidebar page={page} onNavigate={setPage} />
+      <Sidebar page={page} onNavigate={setPage} sync={sync} />
 
       <main className="main">
         {page === 'habits' && (
@@ -117,7 +166,7 @@ export default function App() {
         )}
 
         {page === 'settings' && (
-          <SettingsPage state={state} onImport={setState} onManage={() => setShowManager(true)} />
+          <SettingsPage state={state} sync={sync} onImport={setState} onManage={() => setShowManager(true)} />
         )}
       </main>
 
@@ -256,12 +305,20 @@ function TasksPage({ state, today, weekAnchor, onPrevWeek, onNextWeek, onAdd, on
   )
 }
 
-function SettingsPage({ state, onImport, onManage }: {
+function SettingsPage({ state, sync, onImport, onManage }: {
   state: AppState
+  sync: SyncStatus
   onImport: (s: AppState) => void
   onManage: () => void
 }) {
   const [text, setText] = useState('')
+
+  const syncNote =
+    sync === 'online'
+      ? 'Connected. Your data is saved to your storage server and stays in sync across every device you open the app on.'
+      : sync === 'connecting'
+        ? 'Connecting to your storage server…'
+        : 'Your storage server is unreachable right now, so changes are being saved on this device only and will sync automatically once it is back.'
 
   function doExport() {
     const blob = new Blob([exportState(state)], { type: 'application/json' })
@@ -294,8 +351,14 @@ function SettingsPage({ state, onImport, onManage }: {
         <button className="btn btn--primary" onClick={onManage}>Manage habits</button>
       </section>
       <section className="panel">
+        <h2 className="panel__title">CLOUD SYNC</h2>
+        <p className={`settings__sync settings__sync--${sync}`}>
+          <span className="settings__sync-dot" aria-hidden /> {syncNote}
+        </p>
+      </section>
+      <section className="panel">
         <h2 className="panel__title">DATA</h2>
-        <p className="settings__note">Everything is stored locally on this device. Back it up or move it to another browser here.</p>
+        <p className="settings__note">Your data lives on your storage server so it follows you across devices. You can also keep an offline JSON backup here.</p>
         <div className="settings__row">
           <button className="btn" onClick={doExport}>Export backup (.json)</button>
         </div>
