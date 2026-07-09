@@ -1,6 +1,7 @@
 import type { AppState, Habit } from './types'
 
 const STORAGE_KEY = 'habit-tracker.v1'
+const API_BASE = '/api'
 
 let counter = 0
 export function makeId(): string {
@@ -19,15 +20,24 @@ export const DEFAULT_HABITS: Habit[] = [
   { id: 'seed_focus', name: 'No distractions', emoji: '\u{1F6AB}', color: '#fb7185' },
 ]
 
-export function loadState(): AppState {
+function normalize(parsed: Partial<AppState> | null | undefined): AppState | null {
+  if (parsed && Array.isArray(parsed.habits) && parsed.logs) {
+    // `tasks` was added in a later version — default it for older saves.
+    return { habits: parsed.habits, logs: parsed.logs, tasks: parsed.tasks ?? [] }
+  }
+  return null
+}
+
+// --- Local (offline) cache --------------------------------------------------
+// localStorage is kept as an instant, offline-capable mirror of the server so
+// the UI still works with no network and never loses data mid-edit.
+
+export function loadLocalState(): AppState {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
-      const parsed = JSON.parse(raw) as Partial<AppState>
-      if (Array.isArray(parsed.habits) && parsed.logs) {
-        // `tasks` was added in a later version — default it for older saves.
-        return { habits: parsed.habits, logs: parsed.logs, tasks: parsed.tasks ?? [] }
-      }
+      const state = normalize(JSON.parse(raw) as Partial<AppState>)
+      if (state) return state
     }
   } catch {
     // Corrupt or unavailable storage — fall through to defaults.
@@ -35,7 +45,7 @@ export function loadState(): AppState {
   return { habits: DEFAULT_HABITS, logs: {}, tasks: [] }
 }
 
-export function saveState(state: AppState): void {
+export function saveLocalState(state: AppState): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   } catch {
@@ -43,18 +53,47 @@ export function saveState(state: AppState): void {
   }
 }
 
+// --- Remote (cross-device) storage -----------------------------------------
+// The backend (see /server) persists everything in a SQL database so the same
+// data follows you to any device. These calls degrade gracefully: if the server
+// is unreachable, the app keeps working from the local cache above.
+
+/** Fetch the authoritative state from the server, or null if unavailable. */
+export async function fetchRemoteState(): Promise<AppState | null> {
+  try {
+    const res = await fetch(`${API_BASE}/state`, { headers: { Accept: 'application/json' } })
+    if (!res.ok) return null
+    return normalize((await res.json()) as Partial<AppState>)
+  } catch {
+    return null
+  }
+}
+
+/** Push the full state to the server. Returns true when it was saved. */
+export async function pushRemoteState(state: AppState): Promise<boolean> {
+  try {
+    const res = await fetch(`${API_BASE}/state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(state),
+    })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+// --- Backup import/export (unchanged behaviour) -----------------------------
+
 export function exportState(state: AppState): string {
   return JSON.stringify(state, null, 2)
 }
 
 export function importState(json: string): AppState | null {
   try {
-    const parsed = JSON.parse(json) as Partial<AppState>
-    if (Array.isArray(parsed.habits) && parsed.logs) {
-      return { habits: parsed.habits, logs: parsed.logs, tasks: parsed.tasks ?? [] }
-    }
+    return normalize(JSON.parse(json) as Partial<AppState>)
   } catch {
     // invalid JSON
+    return null
   }
-  return null
 }
